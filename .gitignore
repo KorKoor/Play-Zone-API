@@ -1,0 +1,40 @@
+# Dependencias
+node_modules/
+
+# Builds y distribuciones
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Configuración de IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Archivos de Visual Studio
+.vs/
+*.vsidx
+*.user
+*.cache
+
+# Variables de entorno
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Reportes de cobertura
+coverage/
