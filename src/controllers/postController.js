@@ -1,33 +1,51 @@
 // src/controllers/postController.js
 
 const Post = require('../models/Post');
-const User = require('../models/User'); 
+const User = require('../models/User');
+const cloudinary = require('../config/cloudinary');
 
-// Helper para poblar el post con información básica del autor
-const populateAuthor = (query) => {
-    return query.populate('authorId', 'alias avatarUrl');
-};
 
 // ==========================================================
 // 1. CREAR PUBLICACIÓN
 // ==========================================================
 exports.createPost = async (req, res) => {
-    const { gameTitle, imageUrl, description, rating } = req.body;
+    const { gameTitle, description, rating } = req.body;
     const authorId = req.user.userId;
 
     try {
+        // Subir imagen a Cloudinary si existe
+        let imageUrl = null;
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'posts'
+            });
+            imageUrl = result.secure_url;
+        }
+
         const newPost = await Post.create({
-            authorId, gameTitle, imageUrl, description, rating,
+            authorId,
+            gameTitle,
+            description,
+            rating,
+            imageUrl,
         });
 
-        await User.findByIdAndUpdate(authorId, { $inc: { postsCount: 1 } }); 
+        // Incrementar contador de posts del autor
+        await User.findByIdAndUpdate(authorId, { $inc: { postsCount: 1 } });
 
-        // Usar Model.populate para documentos ya creados
-        const populatedPost = await Post.populate(newPost, { path: 'authorId', select: 'alias avatarUrl' });
+        // Poblar datos básicos del autor
+        const populatedPost = await Post.populate(newPost, {
+            path: 'authorId',
+            select: 'alias avatarUrl'
+        });
 
         res.status(201).json(populatedPost);
     } catch (error) {
-        res.status(500).json({ message: "Error al crear la publicación.", error: error.message });
+        console.error('Error al crear la publicación:', error);
+        res.status(500).json({
+            message: "Error al crear la publicación.",
+            error: error.message
+        });
     }
 };
 
@@ -42,10 +60,9 @@ exports.getFeedPosts = async (req, res) => {
 
     try {
         const user = await User.findById(userId).select('following');
-        const followingIds = user && user.following ? user.following : []; 
-        const authorFilter = [...followingIds, userId]; 
+        const followingIds = user && user.following ? user.following : [];
+        const authorFilter = [...followingIds, userId];
 
-        // Aquí sí se puede usar populate directamente en la query
         const posts = await Post.find({ authorId: { $in: authorFilter } })
             .sort({ createdAt: -1 })
             .skip(skip)
@@ -59,10 +76,12 @@ exports.getFeedPosts = async (req, res) => {
         }));
 
         res.status(200).json({ posts: postsWithLikes });
-
     } catch (error) {
         console.error('Error al cargar el feed:', error);
-        res.status(500).json({ message: "Error al cargar el feed.", error: error.message });
+        res.status(500).json({
+            message: "Error al cargar el feed.",
+            error: error.message
+        });
     }
 };
 
@@ -82,14 +101,24 @@ exports.toggleLike = async (req, res) => {
         const isLiked = post.likes.includes(userId);
 
         if (isLiked) {
-            await Post.findByIdAndUpdate(postId, { $pull: { likes: userId }, $inc: { likesCount: -1 } });
+            await Post.findByIdAndUpdate(postId, {
+                $pull: { likes: userId },
+                $inc: { likesCount: -1 }
+            });
             res.status(200).json({ message: "Like removido.", status: "unliked" });
         } else {
-            await Post.findByIdAndUpdate(postId, { $push: { likes: userId }, $inc: { likesCount: 1 } });
+            await Post.findByIdAndUpdate(postId, {
+                $push: { likes: userId },
+                $inc: { likesCount: 1 }
+            });
             res.status(200).json({ message: "Like agregado.", status: "liked" });
         }
     } catch (error) {
-        res.status(500).json({ message: "Error al procesar el like.", error: error.message });
+        console.error('Error al procesar el like:', error);
+        res.status(500).json({
+            message: "Error al procesar el like.",
+            error: error.message
+        });
     }
 };
 
@@ -97,7 +126,7 @@ exports.toggleLike = async (req, res) => {
 // 4. BÚSQUEDA DE PUBLICACIONES
 // ==========================================================
 exports.searchPosts = async (req, res) => {
-    const query = req.query.q; 
+    const query = req.query.q;
 
     if (!query) {
         return res.status(400).json({ message: "El parámetro de búsqueda 'q' es requerido." });
@@ -112,6 +141,10 @@ exports.searchPosts = async (req, res) => {
 
         res.status(200).json({ posts });
     } catch (error) {
-        res.status(500).json({ message: "Error en la búsqueda de publicaciones.", error: error.message });
+        console.error('Error en la búsqueda de publicaciones:', error);
+        res.status(500).json({
+            message: "Error en la búsqueda de publicaciones.",
+            error: error.message
+        });
     }
 };
