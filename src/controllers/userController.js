@@ -29,17 +29,23 @@ exports.getUserProfile = async (req, res) => {
         const followersCount = user.followers.length;
         const followingCount = user.following.length;
 
-        // Publicaciones recientes
-        const recentPosts = await Post.find({ authorId: userId })
+        // Publicaciones recientes (CORRECCIÓN CLAVE: Asegurar la población del autor)
+        const recentPostsQuery = Post.find({ authorId: userId })
             .sort({ createdAt: -1 })
             .limit(5)
+            // ⚠️ Poblamos el autor aquí para que PostCard pueda acceder a alias/avatar ⚠️
+            .populate('authorId', 'alias avatarUrl') 
             .select('gameTitle imageUrl rating likesCount commentsCount createdAt');
         
         // Guías recientes
-        const recentGuides = await Guide.find({ authorId: userId })
+        const recentGuidesQuery = Guide.find({ authorId: userId })
             .sort({ createdAt: -1 })
             .limit(5)
             .select('title game usefulCount commentsCount createdAt');
+        
+        // Ejecutar ambas consultas simultáneamente
+        const [recentPosts, recentGuides] = await Promise.all([recentPostsQuery, recentGuidesQuery]);
+
 
         let isFollowing = false;
         if (currentUserId && currentUserId !== userId) {
@@ -49,10 +55,18 @@ exports.getUserProfile = async (req, res) => {
             }
         }
         
+        // 🚀 CORRECCIÓN DE LA RESPUESTA JSON 🚀
+        // Enviar la data completa y poblada.
         res.status(200).json({ 
-            user: { ...user.toObject(), followersCount, followingCount, isFollowing },
-            recentPosts,
-            recentGuides,
+            user: { 
+                ...user.toObject(), 
+                followersCount, 
+                followingCount, 
+                isFollowing,
+                // ⚠️ ADJUNTAMOS DIRECTAMENTE LOS POSTS AL OBJETO USER ⚠️
+                recentPosts: recentPosts,
+                recentGuides: recentGuides 
+            }
         });
 
     } catch (error) {
