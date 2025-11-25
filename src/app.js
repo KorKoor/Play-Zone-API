@@ -45,7 +45,6 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/posts', postRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/upload', uploadRoutes);
-
 // Puerto
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

@@ -1,4 +1,4 @@
-// src/controllers/userController.js
+// src/controllers/userController.js (FINAL Y CORREGIDO)
 
 const User = require('../models/User');
 const Post = require('../models/Post'); 
@@ -33,7 +33,6 @@ exports.getUserProfile = async (req, res) => {
         const recentPostsQuery = Post.find({ authorId: userId })
             .sort({ createdAt: -1 })
             .limit(5)
-            // ⚠️ Poblamos el autor aquí para que PostCard pueda acceder a alias/avatar ⚠️
             .populate('authorId', 'alias avatarUrl') 
             .select('gameTitle imageUrl rating likesCount commentsCount createdAt');
         
@@ -55,16 +54,15 @@ exports.getUserProfile = async (req, res) => {
             }
         }
         
-        // 🚀 CORRECCIÓN DE LA RESPUESTA JSON 🚀
-        // Enviar la data completa y poblada.
+        // 🚀 CORRECCIÓN DE LA RESPUESTA JSON: Adjuntar arrays dentro del objeto user 🚀
+        // Esto resuelve la duplicación en el frontend.
         res.status(200).json({ 
             user: { 
                 ...user.toObject(), 
                 followersCount, 
                 followingCount, 
                 isFollowing,
-                // ⚠️ ADJUNTAMOS DIRECTAMENTE LOS POSTS AL OBJETO USER ⚠️
-                recentPosts: recentPosts,
+                recentPosts: recentPosts, 
                 recentGuides: recentGuides 
             }
         });
@@ -118,7 +116,6 @@ exports.changePassword = async (req, res) => {
             return res.status(400).json({ message: "La nueva contraseña debe tener al menos 8 caracteres." });
         }
 
-        // Asegúrate de que tu modelo User tenga un hook pre('save') para hashear la contraseña
         user.password = newPassword; 
         await user.save();
 
@@ -141,7 +138,6 @@ exports.toggleFollow = async (req, res) => {
     }
 
     try {
-        // Optimización con Promise.all
         const [targetUser, currentUser] = await Promise.all([
             User.findById(targetId).select('followers'),
             User.findById(currentUserId).select('following')
@@ -154,11 +150,9 @@ exports.toggleFollow = async (req, res) => {
         const isFollowing = currentUser.following.some(id => id.toString() === targetId);
 
         if (isFollowing) {
-            // ➡️ DEJAR DE SEGUIR
             currentUser.following.pull(targetId);
             targetUser.followers.pull(currentUserId);
         } else {
-            // ➡️ SEGUIR
             currentUser.following.push(targetId);
             targetUser.followers.push(currentUserId);
         }
@@ -186,7 +180,6 @@ exports.getActiveUsers = async (req, res) => {
             .limit(5)
             .select('alias avatarUrl postsCount followers'); 
 
-        // Calcular followersCount manualmente
         const usersWithCounts = activeUsers.map(u => ({
             ...u.toObject(),
             followersCount: u.followers.length
