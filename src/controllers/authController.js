@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 // ==========================================================
 const generateToken = (user) => {
   return jwt.sign(
-    { userId: user._id, alias: user.alias, email: user.email },
+    { userId: user._id, alias: user.alias, email: user.email, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '7d' } // Token caduca en 7 días
   );
@@ -39,6 +39,7 @@ const register = async (req, res) => {
         id: newUser._id,
         alias: newUser.alias,
         email: newUser.email,
+        role: newUser.role, // <-- Añadir role
         avatarUrl: newUser.avatarUrl || null,
       },
     });
@@ -76,6 +77,7 @@ const login = async (req, res) => {
         id: user._id,
         alias: user.alias,
         email: user.email,
+        role: user.role, // <-- Añadir role
         avatarUrl: user.avatarUrl || null,
       },
     });

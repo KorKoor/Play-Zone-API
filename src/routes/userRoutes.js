@@ -20,6 +20,14 @@ router.get(
     userController.getActiveUsers
 ); 
 
+// OBTENER TODOS LOS USUARIOS (Admin)
+// Ruta: GET /api/v1/users/
+router.get(
+    '/',
+    protect,
+    userController.getAllUsers
+);
+
 // Cambiar Contraseña (Requisito 1.10)
 // Ruta: PUT /api/v1/users/password
 router.put(

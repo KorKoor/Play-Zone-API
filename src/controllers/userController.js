@@ -191,3 +191,22 @@ exports.getActiveUsers = async (req, res) => {
         res.status(500).json({ message: "Error al obtener usuarios activos.", error: error.message });
     }
 };
+
+// ==========================================================
+// 6. OBTENER TODOS LOS USUARIOS (Admin)
+// ==========================================================
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({}).select('-password');
+        
+        res.status(200).json({
+            success: true,
+            count: users.length,
+            data: users
+        });
+
+    } catch (error) {
+        console.error('Error in getAllUsers:', error);
+        res.status(500).json({ message: "Error al obtener todos los usuarios.", error: error.message });
+    }
+};
