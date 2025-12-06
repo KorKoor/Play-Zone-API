@@ -322,10 +322,10 @@ const banUser = async (req, res) => {
             });
         }
 
-        if (user.role === 'admin') {
+        if (user.role === 'admin' || user.role === 'moderator') {
             return res.status(403).json({
                 success: false,
-                message: 'No se puede banear a un administrador'
+                message: 'No se pueden banear administradores o moderadores por razones de seguridad'
             });
         }
 

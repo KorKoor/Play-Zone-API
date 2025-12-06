@@ -30,7 +30,7 @@ const router = express.Router();
 
 // Middleware para verificar que el usuario es administrador
 const verifyAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'moderator') {
+    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'moderator')) {
         return res.status(403).json({
             success: false,
             message: 'Acceso denegado. Se requieren permisos de administrador o moderador.'
@@ -41,7 +41,7 @@ const verifyAdmin = (req, res, next) => {
 
 // Middleware específico para administradores (solo admin, no moderadores)
 const verifyAdminOnly = (req, res, next) => {
-    if (req.user.role !== 'admin') {
+    if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({
             success: false,
             message: 'Acceso denegado. Se requieren permisos de administrador.'

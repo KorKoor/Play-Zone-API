@@ -1,8 +1,9 @@
 // src/middleware/authMiddleware.js
 
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-exports.protect = (req, res, next) => {
+exports.protect = async (req, res, next) => {
     let token;
     // 1. Obtener el token del header (ej: 'Bearer TOKEN')
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -11,19 +12,50 @@ exports.protect = (req, res, next) => {
 
     if (!token) {
         // 401 Unauthorized
-        return res.status(401).json({ message: "No autorizado, no hay token." });
+        return res.status(401).json({ 
+            success: false,
+            message: "No autorizado, no hay token." 
+        });
     }
 
     try {
         // 2. Decodificar y verificar la validez/caducidad del token (Seguridad)
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // 3. Adjuntar el payload de usuario a la petición para usarlo en el controlador
-        req.user = decoded; 
+        // 3. Obtener información completa del usuario desde la base de datos
+        const user = await User.findById(decoded.userId).select('-password');
         
-        next(); // Continuar al controlador (ej: createPost)
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no encontrado."
+            });
+        }
+
+        // Verificar si el usuario está baneado
+        if (user.isBanned) {
+            return res.status(403).json({
+                success: false,
+                message: "Usuario baneado."
+            });
+        }
+
+        // 4. Adjuntar el usuario completo a la petición
+        req.user = {
+            id: user._id,
+            userId: user._id, // Para compatibilidad
+            alias: user.alias,
+            email: user.email,
+            role: user.role
+        };
+        
+        next(); // Continuar al controlador
     } catch (error) {
+        console.error('Error en middleware protect:', error);
         // Token inválido o expirado
-        return res.status(401).json({ message: "Token inválido o expirado." });
+        return res.status(401).json({ 
+            success: false,
+            message: "Token inválido o expirado." 
+        });
     }
 };
