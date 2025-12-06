@@ -82,7 +82,34 @@ const userSchema = new mongoose.Schema({
     favoritePosts: [{ 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Post' 
-    }]
+    }],
+
+    // === 6. MODERACIÓN Y BANEO ===
+    isBanned: {
+        type: Boolean,
+        default: false
+    },
+    banReason: {
+        type: String,
+        trim: true
+    },
+    bannedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    bannedAt: {
+        type: Date
+    },
+    banUntil: {
+        type: Date
+    },
+    unbannedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    unbannedAt: {
+        type: Date
+    }
     
 }, { 
     timestamps: true 
