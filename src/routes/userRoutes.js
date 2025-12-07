@@ -12,6 +12,10 @@ const router = express.Router();
 // 1. RUTAS ESPECÍFICAS (DEBEN IR PRIMERO)
 // ==========================================================
 
+// Búsqueda de usuarios (NUEVO)
+// Ruta: GET /api/v1/users/search?search=query&page=1&limit=10
+router.get('/search', protect, userController.searchUsers);
+
 // Jugadores Activos (Requisito 4.4)
 // Ruta: GET /api/v1/users/active
 router.get(

@@ -20,6 +20,7 @@ const gameRoutes = require('./routes/gameRoutes');
 const guideCommentRoutes = require('./routes/guideCommentRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const commentRoutes = require('./routes/commentRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 
 // Conectar a MongoDB
 connectDB();
@@ -58,6 +59,7 @@ app.use('/api/v1/favorites', favoriteRoutes);
 app.use('/api/v1/games', gameRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/comments', commentRoutes);
+app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/', guideCommentRoutes);
 // Puerto
 const PORT = process.env.PORT || 8000;

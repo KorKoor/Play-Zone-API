@@ -47,49 +47,88 @@ exports.createGuide = async (req, res) => {
 // GET /api/v1/guides
 // ==========================================================
 exports.getGuides = async (req, res) => {
-    const { sortBy, search, page = 1 } = req.query;
-    const limit = 10;
-    const skip = (parseInt(page) - 1) * limit;
+    const { 
+        sortBy, 
+        search, 
+        category = '',
+        difficulty = '',
+        page = 1,
+        limit = 10 
+    } = req.query;
+    
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
     const userId = req.user.userId; // ID del usuario autenticado para saber si ya la marcó como útil
 
     let filter = {};
     let sortOptions = { createdAt: -1 }; // Req. 3.7: Por defecto, por fecha (más reciente)
 
-    if (search) {
-        // Req. 3.4: Búsqueda por título o juego (gracias al índice de texto)
-        filter = { $text: { $search: search } };
-        sortOptions = { score: { $meta: "textScore" }, createdAt: -1 };
+    // Filtrar por búsqueda de texto
+    if (search && search.trim()) {
+        const searchRegex = new RegExp(search.trim(), 'i');
+        filter.$or = [
+            { title: searchRegex },
+            { description: searchRegex },
+            { game: searchRegex }
+        ];
+    }
+
+    // Filtrar por categoría
+    if (category) {
+        filter.category = category;
+    }
+
+    // Filtrar por dificultad
+    if (difficulty) {
+        filter.difficulty = difficulty;
     }
 
     if (sortBy === 'popularity') {
         // Req. 3.7: Ordenar por popularidad (más útiles)
         sortOptions = { usefulCount: -1, createdAt: -1 }; 
+    } else if (sortBy === 'title') {
+        sortOptions = { title: 1 };
     }
 
     try {
-        const totalGuides = await Guide.countDocuments(filter);
-        const guides = await Guide.find(filter)
-            .sort(sortOptions)
-            .skip(skip)
-            .limit(limit)
-            .populate('authorId', authorFields)
-            .lean();
+        const [guides, totalGuides] = await Promise.all([
+            Guide.find(filter)
+                .sort(sortOptions)
+                .skip(skip)
+                .limit(limitNum)
+                .populate('authorId', authorFields)
+                .lean(),
+            
+            Guide.countDocuments(filter)
+        ]);
 
         // Adjuntar estado 'isUseful' para el frontend (Req. 3.8)
         const guidesWithStatus = guides.map(guide => ({
             ...guide,
+            id: guide._id,
             isUseful: guide.markedUsefulBy.some(id => id.equals(userId)),
             markedUsefulBy: undefined // Ocultar array de IDs al cliente
         }));
 
         res.status(200).json({ 
+            success: true,
             guides: guidesWithStatus,
-            totalPages: Math.ceil(totalGuides / limit),
-            currentPage: parseInt(page)
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalGuides / limitNum),
+                totalGuides,
+                hasNext: pageNum < Math.ceil(totalGuides / limitNum),
+                hasPrev: pageNum > 1
+            }
         });
     } catch (error) {
         console.error('Error al obtener guías:', error);
-        res.status(500).json({ message: "Error interno al obtener las guías.", error: error.message });
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno al obtener las guías.", 
+            error: error.message 
+        });
     }
 };
 

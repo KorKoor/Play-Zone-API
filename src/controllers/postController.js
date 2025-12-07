@@ -231,40 +231,91 @@ exports.getPostById = async (req, res) => {
 
 // ==========================================================
 // 4. BÚSQUEDA DE PUBLICACIONES (Req. 2.8)
-// GET /api/v1/posts/search?q=query
+// GET /api/v1/posts/search?q=query&page=1&limit=10
 // ==========================================================
 exports.searchPosts = async (req, res) => {
-    const query = req.query.q;
+    const { 
+        q: query, 
+        page = 1, 
+        limit = 10,
+        sortBy = 'relevance',
+        sortOrder = 'desc' 
+    } = req.query;
     const userId = req.user.userId;
 
-    if (!query) {
-        return res.status(400).json({ message: "El parámetro de búsqueda 'q' es requerido." });
+    if (!query || query.trim().length < 2) {
+        return res.status(400).json({ 
+            success: false,
+            message: "El parámetro de búsqueda 'q' es requerido y debe tener al menos 2 caracteres." 
+        });
     }
 
     try {
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+        const searchQuery = query.trim();
+
         // Obtener los favoritos del usuario
         const user = await User.findById(userId).select('favoritePosts');
         const favoritePosts = user && user.favoritePosts ? user.favoritePosts : [];
 
-        // Usa el indice de texto creado en el modelo Post
-        const posts = await Post.find({ $text: { $search: query } })
-            .sort({ score: { $meta: "textScore" } })
-            .limit(20)
-            .populate('authorId', 'alias avatarUrl')
-            .lean();
+        // Crear filtros de búsqueda flexibles
+        const searchFilters = {
+            $or: [
+                { title: new RegExp(searchQuery, 'i') },
+                { content: new RegExp(searchQuery, 'i') },
+                { gameTitle: new RegExp(searchQuery, 'i') }
+            ]
+        };
+
+        // Configurar ordenamiento
+        let sortOptions = {};
+        if (sortBy === 'date') {
+            sortOptions = { created_at: sortOrder === 'asc' ? 1 : -1 };
+        } else if (sortBy === 'title') {
+            sortOptions = { title: sortOrder === 'asc' ? 1 : -1 };
+        } else {
+            // Por defecto relevancia (fecha más reciente)
+            sortOptions = { created_at: -1 };
+        }
+
+        // Ejecutar búsqueda y conteo en paralelo
+        const [posts, totalPosts] = await Promise.all([
+            Post.find(searchFilters)
+                .sort(sortOptions)
+                .limit(limitNum)
+                .skip(skip)
+                .populate('authorId', 'alias avatarUrl')
+                .lean(),
+            
+            Post.countDocuments(searchFilters)
+        ]);
 
         // Mapear para añadir el estado 'isLiked' e 'isFavorite'
         const postsWithStatus = posts.map(post => ({
             ...post,
+            id: post._id,
             isLiked: post.likes.some(likeId => likeId.equals(userId)),
             isFavorite: favoritePosts.some(favoriteId => favoriteId.equals(post._id)),
             likes: undefined // Ocultar el array de IDs de likes
         }));
 
-        res.status(200).json({ posts: postsWithStatus });
+        res.status(200).json({ 
+            success: true,
+            posts: postsWithStatus,
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalPosts / limitNum),
+                totalPosts,
+                hasNext: pageNum < Math.ceil(totalPosts / limitNum),
+                hasPrev: pageNum > 1
+            }
+        });
     } catch (error) {
         console.error('Error en la búsqueda de publicaciones:', error);
         res.status(500).json({
+            success: false,
             message: "Error en la búsqueda de publicaciones.",
             error: error.message
         });

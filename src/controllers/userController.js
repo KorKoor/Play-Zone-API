@@ -292,3 +292,96 @@ exports.getUserFavorites = async (req, res) => {
         });
     }
 };
+
+// ==========================================================
+// BÚSQUEDA DE USUARIOS
+// GET /api/v1/users?search={query}&page={page}&limit={limit}
+// ==========================================================
+exports.searchUsers = async (req, res) => {
+    try {
+        const { 
+            search = '', 
+            page = 1, 
+            limit = 10,
+            sortBy = 'alias',
+            sortOrder = 'asc' 
+        } = req.query;
+
+        if (!search || search.trim().length < 2) {
+            return res.status(400).json({
+                success: false,
+                message: 'El término de búsqueda debe tener al menos 2 caracteres'
+            });
+        }
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+        const searchQuery = search.trim();
+
+        // Crear regex para búsqueda case-insensitive
+        const regex = new RegExp(searchQuery, 'i');
+
+        const searchFilters = {
+            $or: [
+                { alias: regex },
+                { email: regex }
+            ]
+        };
+
+        // Configurar ordenamiento
+        let sortOptions = {};
+        if (sortBy === 'date') {
+            sortOptions = { createdAt: sortOrder === 'asc' ? 1 : -1 };
+        } else if (sortBy === 'followers') {
+            sortOptions = { followersCount: sortOrder === 'asc' ? 1 : -1 };
+        } else {
+            sortOptions = { alias: sortOrder === 'asc' ? 1 : -1 };
+        }
+
+        // Ejecutar búsqueda y conteo en paralelo
+        const [users, totalUsers] = await Promise.all([
+            User.find(searchFilters)
+                .select('alias email avatarUrl description followersCount postsCount guidesCount createdAt')
+                .sort(sortOptions)
+                .limit(limitNum)
+                .skip(skip)
+                .lean(),
+            
+            User.countDocuments(searchFilters)
+        ]);
+
+        // Mapear usuarios para el frontend
+        const mappedUsers = users.map(user => ({
+            id: user._id,
+            username: user.alias,
+            name: user.alias,
+            avatar: user.avatarUrl || null,
+            email: user.email,
+            description: user.description || '',
+            followersCount: user.followersCount || 0,
+            postsCount: user.postsCount || 0,
+            guidesCount: user.guidesCount || 0,
+            createdAt: user.createdAt
+        }));
+
+        res.json({
+            success: true,
+            users: mappedUsers,
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalUsers / limitNum),
+                totalUsers,
+                hasNext: pageNum < Math.ceil(totalUsers / limitNum),
+                hasPrev: pageNum > 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al buscar usuarios:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor al buscar usuarios'
+        });
+    }
+};
