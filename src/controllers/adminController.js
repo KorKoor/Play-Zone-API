@@ -232,9 +232,9 @@ const approveReport = async (req, res) => {
         }
 
         report.status = 'approved';
-        report.reviewedBy = req.user.id;
-        report.reviewedAt = new Date();
-        if (notes) report.reviewNotes = notes;
+        report.reviewed_by = req.user.id;
+        report.reviewed_at = new Date();
+        if (notes) report.admin_notes = notes;
 
         await report.save();
 
@@ -278,9 +278,9 @@ const rejectReport = async (req, res) => {
         }
 
         report.status = 'rejected';
-        report.reviewedBy = req.user.id;
-        report.reviewedAt = new Date();
-        if (notes) report.reviewNotes = notes;
+        report.reviewed_by = req.user.id;
+        report.reviewed_at = new Date();
+        if (notes) report.admin_notes = notes;
 
         await report.save();
 
