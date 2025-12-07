@@ -4,6 +4,7 @@ const Report = require('../models/Report');
 const Post = require('../models/Post');
 const Guide = require('../models/Guide');
 const GuideComment = require('../models/GuideComment');
+const Comment = require('../models/Comment');
 const User = require('../models/User');
 
 // ==========================================================
@@ -89,10 +90,18 @@ exports.createReport = async (req, res) => {
                 break;
 
             case 'comment':
-                const comment = await GuideComment.findById(content_id);
+                // Buscar primero en comentarios de posts
+                let comment = await Comment.findById(content_id);
                 if (comment) {
                     contentExists = true;
                     if (!reportedUserId) reportedUserId = comment.authorId;
+                } else {
+                    // Si no se encuentra, buscar en comentarios de guías
+                    const guideComment = await GuideComment.findById(content_id);
+                    if (guideComment) {
+                        contentExists = true;
+                        if (!reportedUserId) reportedUserId = guideComment.authorId;
+                    }
                 }
                 break;
 
@@ -244,27 +253,126 @@ exports.getAllReportsAdmin = async (req, res) => {
         });
 
         // Formatear reportes para el frontend
-        const formattedReports = reports.map(report => ({
-            id: report._id,
-            content_id: report.content_id,
-            content_type: report.content_type,
-            reason: report.reason,
-            description: report.description,
-            reporter: report.reporter_user_id ? {
-                id: report.reporter_user_id._id,
-                alias: report.reporter_user_id.alias
-            } : null,
-            reported_user: report.reported_user_id ? {
-                id: report.reported_user_id._id,
-                alias: report.reported_user_id.alias
-            } : null,
-            status: report.status,
-            admin_notes: report.admin_notes,
-            reviewed_by: report.reviewed_by?._id || null,
-            reviewed_at: report.reviewed_at,
-            created_at: report.created_at,
-            updated_at: report.updated_at,
-            additional_info: report.additional_info
+        const formattedReports = await Promise.all(reports.map(async (report) => {
+            let content_data = null;
+            
+            // Obtener datos completos del contenido reportado
+            try {
+                switch (report.content_type) {
+                    case 'post':
+                        const post = await Post.findById(report.content_id)
+                            .populate('authorId', 'alias')
+                            .select('title content authorId created_at game_id');
+                        if (post) {
+                            content_data = {
+                                title: post.title,
+                                content: post.content,
+                                author: {
+                                    id: post.authorId._id,
+                                    alias: post.authorId.alias
+                                },
+                                created_at: post.created_at
+                            };
+                        }
+                        break;
+
+                    case 'guide':
+                        const guide = await Guide.findById(report.content_id)
+                            .populate('authorId', 'alias')
+                            .select('title description authorId created_at');
+                        if (guide) {
+                            content_data = {
+                                title: guide.title,
+                                content: guide.description,
+                                author: {
+                                    id: guide.authorId._id,
+                                    alias: guide.authorId.alias
+                                },
+                                created_at: guide.created_at
+                            };
+                        }
+                        break;
+
+                    case 'comment':
+                        // Buscar en comentarios de posts
+                        let comment = await Comment.findById(report.content_id)
+                            .populate('authorId', 'alias')
+                            .populate('postId', 'title')
+                            .select('content authorId postId created_at');
+                        
+                        if (comment) {
+                            content_data = {
+                                text: comment.content,
+                                author: {
+                                    id: comment.authorId._id,
+                                    alias: comment.authorId.alias
+                                },
+                                post_title: comment.postId.title,
+                                created_at: comment.created_at,
+                                type: 'post_comment'
+                            };
+                        } else {
+                            // Buscar en comentarios de guías
+                            const guideComment = await GuideComment.findById(report.content_id)
+                                .populate('authorId', 'alias')
+                                .populate('guideId', 'title')
+                                .select('content authorId guideId created_at');
+                            
+                            if (guideComment) {
+                                content_data = {
+                                    text: guideComment.content,
+                                    author: {
+                                        id: guideComment.authorId._id,
+                                        alias: guideComment.authorId.alias
+                                    },
+                                    guide_title: guideComment.guideId.title,
+                                    created_at: guideComment.created_at,
+                                    type: 'guide_comment'
+                                };
+                            }
+                        }
+                        break;
+
+                    case 'user':
+                        const user = await User.findById(report.content_id)
+                            .select('alias email created_at bio');
+                        if (user) {
+                            content_data = {
+                                alias: user.alias,
+                                bio: user.bio,
+                                created_at: user.created_at
+                            };
+                        }
+                        break;
+                }
+            } catch (contentError) {
+                console.warn(`Error obteniendo contenido para reporte ${report._id}:`, contentError);
+                content_data = { error: 'Contenido no disponible' };
+            }
+
+            return {
+                id: report._id,
+                content_id: report.content_id,
+                content_type: report.content_type,
+                content_data,
+                reason: report.reason,
+                description: report.description,
+                reporter: report.reporter_user_id ? {
+                    id: report.reporter_user_id._id,
+                    alias: report.reporter_user_id.alias
+                } : null,
+                reported_user: report.reported_user_id ? {
+                    id: report.reported_user_id._id,
+                    alias: report.reported_user_id.alias
+                } : null,
+                status: report.status,
+                admin_notes: report.admin_notes,
+                reviewed_by: report.reviewed_by?._id || null,
+                reviewed_at: report.reviewed_at,
+                created_at: report.created_at,
+                updated_at: report.updated_at,
+                additional_info: report.additional_info
+            };
         }));
 
         res.json({
@@ -284,10 +392,46 @@ exports.getAllReportsAdmin = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error al obtener reportes:', error);
+        console.error('Error al obtener mis reportes:', error);
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor al obtener reportes'
+        });
+    }
+};
+
+// ==========================================================
+// VERIFICAR SI EL USUARIO YA REPORTÓ EL CONTENIDO
+// GET /api/v1/reports/check-duplicate
+// ==========================================================
+exports.checkDuplicate = async (req, res) => {
+    try {
+        const { content_id, content_type } = req.query;
+        const reporter_user_id = req.user.userId;
+
+        if (!content_id || !content_type) {
+            return res.status(400).json({
+                success: false,
+                message: 'content_id y content_type son requeridos'
+            });
+        }
+
+        const existingReport = await Report.existsReport(content_id, content_type, reporter_user_id);
+
+        res.json({
+            success: true,
+            data: {
+                already_reported: !!existingReport,
+                report_id: existingReport?._id || null,
+                report_status: existingReport?.status || null
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al verificar duplicado:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
         });
     }
 };

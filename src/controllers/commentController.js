@@ -48,3 +48,75 @@ exports.getComments = async (req, res) => {
         res.status(500).json({ message: "Error al cargar los comentarios.", error: error.message });
     }
 };
+
+// GET /api/v1/comments/:commentId (NUEVO - Para sistema de reportes y referencias directas)
+exports.getCommentById = async (req, res) => {
+    const { commentId } = req.params;
+
+    try {
+        const comment = await Comment.findById(commentId)
+            .populate('authorId', 'alias avatarUrl')
+            .populate('postId', 'title')
+            .lean();
+
+        if (!comment) {
+            return res.status(404).json({ 
+                message: "Comentario no encontrado",
+                success: false 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true,
+            data: comment 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            message: "Error al obtener el comentario.", 
+            error: error.message,
+            success: false 
+        });
+    }
+};
+
+// DELETE /api/v1/comments/:commentId (NUEVO - Para moderación)
+exports.deleteComment = async (req, res) => {
+    const { commentId } = req.params;
+    const userId = req.user.userId;
+    const userRole = req.user.role;
+
+    try {
+        const comment = await Comment.findById(commentId);
+
+        if (!comment) {
+            return res.status(404).json({ 
+                message: "Comentario no encontrado",
+                success: false 
+            });
+        }
+
+        // Solo el autor del comentario o un admin puede eliminarlo
+        if (comment.authorId.toString() !== userId && userRole !== 'admin') {
+            return res.status(403).json({ 
+                message: "No tienes permisos para eliminar este comentario",
+                success: false 
+            });
+        }
+
+        await Comment.findByIdAndDelete(commentId);
+
+        // Decrementar contador de comentarios en el Post
+        await Post.findByIdAndUpdate(comment.postId, { $inc: { commentsCount: -1 } }); 
+
+        res.status(200).json({ 
+            success: true,
+            message: "Comentario eliminado exitosamente" 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            message: "Error al eliminar el comentario.", 
+            error: error.message,
+            success: false 
+        });
+    }
+};
