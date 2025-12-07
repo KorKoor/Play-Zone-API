@@ -281,7 +281,7 @@ const rejectReport = async (req, res) => {
         report.reviewed_by = req.user.id;
         report.reviewed_at = new Date();
         if (notes) report.admin_notes = notes;
-
+        
         await report.save();
 
         res.status(200).json({

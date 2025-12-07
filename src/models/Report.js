@@ -53,7 +53,7 @@ const reportSchema = new mongoose.Schema({
     // Estado del reporte
     status: {
         type: String,
-        enum: ['pending', 'reviewing', 'resolved', 'dismissed'],
+        enum: ['pending', 'reviewing', 'resolved', 'dismissed', 'approved', 'rejected'],
         default: 'pending'
     },
 
