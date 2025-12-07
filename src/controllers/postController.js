@@ -215,3 +215,95 @@ exports.searchPosts = async (req, res) => {
         });
     }
 };
+
+// ==========================================================
+// FAVORITOS
+// ==========================================================
+
+// PUT /api/v1/posts/:postId/favorite
+exports.toggleFavorite = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.userId;
+
+        // Verificar que el post existe
+        const post = await Post.findById(postId);
+        if (!post) {
+            return res.status(404).json({
+                success: false,
+                message: 'Post no encontrado'
+            });
+        }
+
+        // Obtener el usuario
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario no encontrado'
+            });
+        }
+
+        // Verificar si el post ya está en favoritos
+        const isFavorite = user.favoritePosts.includes(postId);
+
+        if (isFavorite) {
+            // Remover de favoritos
+            user.favoritePosts = user.favoritePosts.filter(id => !id.equals(postId));
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Post removido de favoritos',
+                isFavorite: false
+            });
+        } else {
+            // Agregar a favoritos
+            user.favoritePosts.push(postId);
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Post agregado a favoritos',
+                isFavorite: true
+            });
+        }
+    } catch (error) {
+        console.error('Error al alternar favorito:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// GET /api/v1/posts/:postId/favorite-status
+exports.getFavoriteStatus = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.userId;
+
+        const user = await User.findById(userId).select('favoritePosts');
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario no encontrado'
+            });
+        }
+
+        const isFavorite = user.favoritePosts.includes(postId);
+
+        res.status(200).json({
+            success: true,
+            isFavorite
+        });
+    } catch (error) {
+        console.error('Error al obtener estado de favorito:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};

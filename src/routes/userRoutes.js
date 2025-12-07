@@ -67,6 +67,26 @@ router.post(
     userController.toggleFollow
 );
 
+// FAVORITOS (múltiples rutas para compatibilidad)
+// Ruta: GET /api/v1/users/favorites
+router.get(
+    '/favorites',
+    protect,
+    userController.getUserFavorites
+);
+
+// Ruta alternativa: PUT /api/v1/users/favorites/:postId
+router.put(
+    '/favorites/:postId',
+    protect,
+    async (req, res) => {
+        // Redirigir a la función de toggle favorite en postController
+        req.params.postId = req.params.postId;
+        const postController = require('../controllers/postController');
+        return postController.toggleFavorite(req, res);
+    }
+);
+
 // ==========================================================
 // EXPORTAR ROUTER
 // ==========================================================

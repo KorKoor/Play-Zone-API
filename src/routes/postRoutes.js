@@ -21,7 +21,13 @@ router.get('/search', protect, postController.searchPosts);
 router.put('/:postId/like', protect, postController.toggleLike);
 router.get('/:postId/likes', protect, postController.getLikesList);
 
-// 5. COMENTARIOS (Requisito 2.5, 2.6)
+// 5. FAVORITOS (múltiples endpoints para compatibilidad)
+router.put('/:postId/favorite', protect, postController.toggleFavorite);
+router.put('/:postId/bookmark', protect, postController.toggleFavorite); // Alias para compatibilidad
+router.put('/:postId/toggle-favorite', protect, postController.toggleFavorite); // Alias para compatibilidad
+router.get('/:postId/favorite-status', protect, postController.getFavoriteStatus);
+
+// 6. COMENTARIOS (Requisito 2.5, 2.6)
 router.post('/:postId/comments', protect, commentController.addComment); 
 router.get('/:postId/comments', protect, commentController.getComments); 
 

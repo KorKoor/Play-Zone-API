@@ -15,6 +15,7 @@ const userRoutes = require('./routes/userRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const guideRoutes = require('./routes/guideRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const favoriteRoutes = require('./routes/favoriteRoutes');
 
 // Conectar a MongoDB
 connectDB();
@@ -49,6 +50,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/guides', guideRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/favorites', favoriteRoutes);
 // Puerto
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

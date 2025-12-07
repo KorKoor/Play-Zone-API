@@ -210,3 +210,61 @@ exports.getAllUsers = async (req, res) => {
         res.status(500).json({ message: "Error al obtener todos los usuarios.", error: error.message });
     }
 };
+
+// ==========================================================
+// FAVORITOS
+// ==========================================================
+
+// GET /api/v1/users/favorites
+exports.getUserFavorites = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { page = 1, limit = 10 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const user = await User.findById(userId).populate({
+            path: 'favoritePosts',
+            populate: {
+                path: 'authorId',
+                select: 'alias avatarUrl'
+            },
+            options: {
+                sort: { createdAt: -1 },
+                skip: skip,
+                limit: parseInt(limit)
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario no encontrado'
+            });
+        }
+
+        const totalFavorites = await User.findById(userId).select('favoritePosts');
+        const total = totalFavorites.favoritePosts.length;
+
+        const response = {
+            success: true,
+            data: {
+                favorites: user.favoritePosts,
+                pagination: {
+                    current: parseInt(page),
+                    total: Math.ceil(total / parseInt(limit)),
+                    limit: parseInt(limit),
+                    totalFavorites: total
+                }
+            }
+        };
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error al obtener favoritos del usuario:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
