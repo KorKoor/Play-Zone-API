@@ -29,12 +29,20 @@ exports.getUserProfile = async (req, res) => {
         const followersCount = user.followers.length;
         const followingCount = user.following.length;
 
+        // Obtener favoritos del usuario actual para marcar los posts
+        let favoritePosts = [];
+        if (currentUserId) {
+            const currentUser = await User.findById(currentUserId).select('favoritePosts');
+            favoritePosts = currentUser && currentUser.favoritePosts ? currentUser.favoritePosts : [];
+        }
+
         // Publicaciones recientes (CORRECCIÓN CLAVE: Asegurar la población del autor)
         const recentPostsQuery = Post.find({ authorId: userId })
             .sort({ createdAt: -1 })
             .limit(5)
             .populate('authorId', 'alias avatarUrl') 
-            .select('gameTitle imageUrl rating likesCount commentsCount createdAt');
+            .select('gameTitle imageUrl rating likesCount commentsCount createdAt likes')
+            .lean();
         
         // Guías recientes
         const recentGuidesQuery = Guide.find({ authorId: userId })
@@ -43,7 +51,15 @@ exports.getUserProfile = async (req, res) => {
             .select('title game usefulCount commentsCount createdAt');
         
         // Ejecutar ambas consultas simultáneamente
-        const [recentPosts, recentGuides] = await Promise.all([recentPostsQuery, recentGuidesQuery]);
+        const [recentPostsData, recentGuides] = await Promise.all([recentPostsQuery, recentGuidesQuery]);
+
+        // Mapear posts recientes para incluir estado de likes y favoritos
+        const recentPosts = recentPostsData.map(post => ({
+            ...post,
+            isLiked: currentUserId ? post.likes.some(likeId => likeId.equals(currentUserId)) : false,
+            isFavorite: currentUserId ? favoritePosts.some(favoriteId => favoriteId.equals(post._id)) : false,
+            likes: undefined // Ocultar el array de IDs de likes
+        }));
 
 
         let isFollowing = false;
@@ -242,13 +258,21 @@ exports.getUserFavorites = async (req, res) => {
             });
         }
 
+        // Mapear favoritos para incluir estados isLiked e isFavorite
+        const favoritesWithStatus = user.favoritePosts.map(post => ({
+            ...post.toObject(),
+            isLiked: post.likes ? post.likes.some(likeId => likeId.equals(userId)) : false,
+            isFavorite: true, // Todos los posts en esta lista son favoritos
+            likes: undefined // Ocultar el array de IDs de likes
+        }));
+
         const totalFavorites = await User.findById(userId).select('favoritePosts');
         const total = totalFavorites.favoritePosts.length;
 
         const response = {
             success: true,
             data: {
-                favorites: user.favoritePosts,
+                favorites: favoritesWithStatus,
                 pagination: {
                     current: parseInt(page),
                     total: Math.ceil(total / parseInt(limit)),

@@ -91,8 +91,9 @@ exports.getFeedPosts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     try {
-        const user = await User.findById(userId).select('following');
+        const user = await User.findById(userId).select('following favoritePosts');
         const followingIds = user && user.following ? user.following : []; 
+        const favoritePosts = user && user.favoritePosts ? user.favoritePosts : [];
 
         // Filtro: Posts de usuarios que sigo O posts míos.
         const authorFilter = [...followingIds, userId];
@@ -104,10 +105,11 @@ exports.getFeedPosts = async (req, res) => {
             .populate('authorId', 'alias avatarUrl') // Poblar en la consulta inicial es más eficiente
             .lean(); // Usar lean para mejorar performance si no se modificará el documento
 
-        // Mapear para añadir el estado 'isLiked'
+        // Mapear para añadir el estado 'isLiked' e 'isFavorite'
         const postsWithLikes = posts.map(post => ({
             ...post, // Ya es un objeto plano gracias a .lean()
             isLiked: post.likes.some(likeId => likeId.equals(userId)),
+            isFavorite: favoritePosts.some(favoriteId => favoriteId.equals(post._id)),
             likes: undefined // Ocultar el array de IDs de likes
         }));
 
@@ -193,12 +195,17 @@ exports.getLikesList = async (req, res) => {
 // ==========================================================
 exports.searchPosts = async (req, res) => {
     const query = req.query.q;
+    const userId = req.user.userId;
 
     if (!query) {
         return res.status(400).json({ message: "El parámetro de búsqueda 'q' es requerido." });
     }
 
     try {
+        // Obtener los favoritos del usuario
+        const user = await User.findById(userId).select('favoritePosts');
+        const favoritePosts = user && user.favoritePosts ? user.favoritePosts : [];
+
         // Usa el indice de texto creado en el modelo Post
         const posts = await Post.find({ $text: { $search: query } })
             .sort({ score: { $meta: "textScore" } })
@@ -206,7 +213,15 @@ exports.searchPosts = async (req, res) => {
             .populate('authorId', 'alias avatarUrl')
             .lean();
 
-        res.status(200).json({ posts });
+        // Mapear para añadir el estado 'isLiked' e 'isFavorite'
+        const postsWithStatus = posts.map(post => ({
+            ...post,
+            isLiked: post.likes.some(likeId => likeId.equals(userId)),
+            isFavorite: favoritePosts.some(favoriteId => favoriteId.equals(post._id)),
+            likes: undefined // Ocultar el array de IDs de likes
+        }));
+
+        res.status(200).json({ posts: postsWithStatus });
     } catch (error) {
         console.error('Error en la búsqueda de publicaciones:', error);
         res.status(500).json({
