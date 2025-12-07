@@ -30,8 +30,8 @@ router.get('/:guideId', protect, guideController.getGuideById);
 // POST /api/v1/guides - Crear nueva guía (Req. 3.1)
 router.post('/', protect, guideController.createGuide); 
 
-// POST /api/v1/guides/:guideId/useful - Togglear la marca 'Útil' (Req. 3.8)
-router.post('/:guideId/useful', protect, guideController.toggleUseful);
+// PUT /api/v1/guides/:guideId/useful - Togglear la marca 'Útil' (Req. 3.8)
+router.put('/:guideId/useful', protect, guideController.toggleUseful);
 
 // PUT /api/v1/guides/:guideId - Actualizar/Editar guía (Req. 3.6)
 router.put('/:guideId', protect, guideController.updateGuide); 

@@ -237,7 +237,7 @@ exports.deleteGuide = async (req, res) => {
 
 // ==========================================================
 // 6. TOGGLEAR MARCA "ÚTIL" (Req. 3.8)
-// POST /api/v1/guides/:guideId/useful
+// PUT /api/v1/guides/:guideId/useful
 // ==========================================================
 exports.toggleUseful = async (req, res) => {
     const { guideId } = req.params;
