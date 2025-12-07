@@ -59,3 +59,22 @@ exports.protect = async (req, res, next) => {
         });
     }
 };
+
+// Middleware para verificar rol de administrador
+exports.adminOnly = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({
+            success: false,
+            message: "Acceso no autorizado"
+        });
+    }
+
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({
+            success: false,
+            message: "Acceso denegado. Solo administradores."
+        });
+    }
+
+    next();
+};

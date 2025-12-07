@@ -17,6 +17,8 @@ const guideRoutes = require('./routes/guideRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const gameRoutes = require('./routes/gameRoutes');
+const guideCommentRoutes = require('./routes/guideCommentRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Conectar a MongoDB
 connectDB();
@@ -53,6 +55,8 @@ app.use('/api/v1/guides', guideRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/favorites', favoriteRoutes);
 app.use('/api/v1/games', gameRoutes);
+app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/', guideCommentRoutes);
 // Puerto
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
