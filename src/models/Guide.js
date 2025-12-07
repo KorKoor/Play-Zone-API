@@ -79,5 +79,22 @@ const guideSchema = new mongoose.Schema({
 // Índice para mejorar la búsqueda por título o juego (Requisito 3.4)
 guideSchema.index({ title: 'text', game: 'text' });
 
+// Habilitar la inclusión de virtuales en las salidas JSON y object
+guideSchema.set('toJSON', {
+    virtuals: true,
+    transform: (doc, ret) => {
+        // Elimina campos no deseados
+        delete ret._id;
+        delete ret.__v;
+
+        // Si hay subdocumentos en 'steps', también transformar cada uno
+        if (ret.steps) {
+            ret.steps.forEach(step => {
+                delete step._id;
+            });
+        }
+    }
+});
+
 const Guide = mongoose.model('Guide', guideSchema);
 module.exports = Guide;

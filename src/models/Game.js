@@ -109,4 +109,14 @@ gameSchema.index({ platform: 1 });
 gameSchema.index({ featured: -1, createdAt: -1 });
 gameSchema.index({ isActive: 1 });
 
+// Habilitar la inclusión de virtuales en las salidas JSON y object
+gameSchema.set('toJSON', {
+    virtuals: true,
+    transform: (doc, ret) => {
+        // Elimina campos no deseados
+        delete ret._id;
+        delete ret.__v;
+    }
+});
+
 module.exports = mongoose.model('Game', gameSchema);

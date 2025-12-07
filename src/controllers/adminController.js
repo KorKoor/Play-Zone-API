@@ -214,7 +214,7 @@ const getReports = async (req, res) => {
 const approveReport = async (req, res) => {
     try {
         const { id } = req.params;
-        const { notes } = req.body;
+        const { notes } = req.body || {};
 
         const report = await Report.findById(id);
         if (!report) {
@@ -260,7 +260,7 @@ const approveReport = async (req, res) => {
 const rejectReport = async (req, res) => {
     try {
         const { id } = req.params;
-        const { notes } = req.body;
+        const { notes } = req.body || {};
 
         const report = await Report.findById(id);
         if (!report) {
@@ -291,6 +291,34 @@ const rejectReport = async (req, res) => {
         });
     } catch (error) {
         console.error('Error al rechazar reporte:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// DELETE /api/v1/admin/reports/:id
+const deleteReport = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const report = await Report.findByIdAndDelete(id);
+
+        if (!report) {
+            return res.status(404).json({
+                success: false,
+                message: 'Reporte no encontrado'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Reporte eliminado exitosamente'
+        });
+    } catch (error) {
+        console.error('Error al eliminar reporte:', error);
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor',
@@ -727,6 +755,7 @@ module.exports = {
     getReports,
     approveReport,
     rejectReport,
+    deleteReport,
     
     // Usuarios
     banUser,

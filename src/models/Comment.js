@@ -26,5 +26,15 @@ const commentSchema = new mongoose.Schema({
     timestamps: true 
 });
 
+// Habilitar la inclusión de virtuales en las salidas JSON y object
+commentSchema.set('toJSON', {
+    virtuals: true,
+    transform: (doc, ret) => {
+        // Elimina campos no deseados
+        delete ret._id;
+        delete ret.__v;
+    }
+});
+
 const Comment = mongoose.model('Comment', commentSchema);
 module.exports = Comment;

@@ -10,6 +10,7 @@ const {
     getReports,
     approveReport,
     rejectReport,
+    deleteReport,
     
     // Usuarios
     banUser,
@@ -61,6 +62,7 @@ router.get('/logs', verifyAdmin, getAdminLogs);
 router.get('/reports', verifyAdmin, getReports);
 router.put('/reports/:id/approve', verifyAdmin, approveReport);
 router.put('/reports/:id/reject', verifyAdmin, rejectReport);
+router.delete('/reports/:id', verifyAdmin, deleteReport);
 
 // ========== RUTAS DE USUARIOS ==========
 // Solo administradores pueden banear/desbanear usuarios

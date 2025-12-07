@@ -27,6 +27,9 @@ router.put('/:postId/bookmark', protect, postController.toggleFavorite); // Alia
 router.put('/:postId/toggle-favorite', protect, postController.toggleFavorite); // Alias para compatibilidad
 router.get('/:postId/favorite-status', protect, postController.getFavoriteStatus);
 
+// OBTENER POST INDIVIDUAL
+router.get('/:postId', protect, postController.getPostById);
+
 // 6. COMENTARIOS (Requisito 2.5, 2.6)
 router.post('/:postId/comments', protect, commentController.addComment); 
 router.get('/:postId/comments', protect, commentController.getComments); 

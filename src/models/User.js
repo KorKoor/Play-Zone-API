@@ -141,5 +141,15 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 // Índices para mejorar búsquedas
 userSchema.index({ alias: 'text', name: 'text', email: 1 });
 
+// Habilitar la inclusión de virtuales en las salidas JSON y object
+userSchema.set('toJSON', {
+    virtuals: true,
+    transform: (doc, ret) => {
+        // Elimina campos no deseados
+        delete ret._id;
+        delete ret.__v;
+    }
+});
+
 const User = mongoose.model('User', userSchema);
 module.exports = User;

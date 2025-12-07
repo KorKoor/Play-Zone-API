@@ -190,6 +190,46 @@ exports.getLikesList = async (req, res) => {
 };
 
 // ==========================================================
+// 3.2. OBTENER UN POST INDIVIDUAL
+// GET /api/v1/posts/:postId
+// ==========================================================
+exports.getPostById = async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user.userId;
+
+    try {
+        const post = await Post.findById(postId)
+            .populate('authorId', 'alias avatarUrl')
+            .lean();
+
+        if (!post) {
+            return res.status(404).json({ message: "Publicación no encontrada." });
+        }
+
+        // Obtener favoritos del usuario para añadir estado
+        const user = await User.findById(userId).select('favoritePosts');
+        const isFavorite = user ? user.favoritePosts.some(favoriteId => favoriteId.equals(post._id)) : false;
+
+        const postWithStatus = {
+            ...post,
+            isLiked: post.likes.some(likeId => likeId.equals(userId)),
+            isFavorite,
+            likes: undefined
+        };
+
+        res.status(200).json(postWithStatus);
+
+    } catch (error) {
+        console.error('Error al obtener la publicación:', error);
+        res.status(500).json({
+            message: "Error al obtener la publicación.",
+            error: error.message
+        });
+    }
+};
+
+
+// ==========================================================
 // 4. BÚSQUEDA DE PUBLICACIONES (Req. 2.8)
 // GET /api/v1/posts/search?q=query
 // ==========================================================
