@@ -2,6 +2,7 @@
 
 const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
+const User = require('../models/User');
 
 // POST /api/v1/upload/avatar
 exports.uploadAvatar = async (req, res) => {
@@ -40,9 +41,21 @@ exports.uploadAvatar = async (req, res) => {
       if (err) console.error("Error al eliminar archivo temporal:", err);
     });
 
-    // === 4. RESPUESTA AL FRONTEND ===
+    // === 4. ACTUALIZAR URL DEL AVATAR EN LA BASE DE DATOS DEL USUARIO ===
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { avatarUrl: result.secure_url },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      console.error("Error: Usuario no encontrado al intentar actualizar avatarUrl para userId:", userId);
+      return res.status(404).json({ message: "Usuario no encontrado para actualizar avatar." });
+    }
+
+    // === 5. RESPUESTA AL FRONTEND ===
     return res.status(200).json({
-      message: "Avatar subido con éxito.",
+      message: "Avatar subido y perfil actualizado con éxito.",
       imageUrl: result.secure_url,
     });
 
