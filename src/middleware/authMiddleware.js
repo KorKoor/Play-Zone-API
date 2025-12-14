@@ -78,3 +78,15 @@ exports.adminOnly = (req, res, next) => {
 
     next();
 };
+
+exports.restrictTo = (roles) => { // 'roles' debe ser un array: ['admin', 'moderator']
+    return (req, res, next) => {
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: "Acceso denegado. Permisos insuficientes."
+            });
+        }
+        next();
+    };
+};

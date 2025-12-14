@@ -2,79 +2,60 @@
 
 const express = require('express');
 const {
-    // Dashboard
-    getDashboardStats,
-    getAdminLogs,
-    
-    // Reportes
-    getReports,
-    approveReport,
-    rejectReport,
-    deleteReport,
-    
-    // Usuarios
-    banUser,
-    unbanUser,
-    deleteUser,
-    updateUserRole,
-    
-    // Juegos
-    getGames,
-    createGame,
-    updateGame,
-    deleteGame
+    // Importamos todas las funciones del controlador de admin
+    getDashboardStats, getAdminLogs, getReports, approveReport, rejectReport, deleteReport,
+    banUser, unbanUser, deleteUser, updateUserRole, getGames, createGame, updateGame, deleteGame
 } = require('../controllers/adminController');
 
-const { protect } = require('../middleware/authMiddleware');
+// 🚨 IMPORTACIÓN CRÍTICA: Necesitas 'protect' para autenticar y 'restrictTo' para la autorización.
+const { protect, restrictTo } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Middleware para verificar que el usuario es administrador
-const verifyAdmin = (req, res, next) => {
-    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'moderator')) {
-        return res.status(403).json({
-            success: false,
-            message: 'Acceso denegado. Se requieren permisos de administrador o moderador.'
-        });
-    }
-    next();
-};
+// 1. DEFINICIÓN DE ROLES CON EL MIDDLEWARE CENTRALIZADO
+// Permite acceso a administradores y moderadores
+const adminAndModerator = restrictTo(['admin', 'moderator']);
+// Permite acceso solo a administradores
+const adminOnly = restrictTo(['admin']);
 
-// Middleware específico para administradores (solo admin, no moderadores)
-const verifyAdminOnly = (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({
-            success: false,
-            message: 'Acceso denegado. Se requieren permisos de administrador.'
-        });
-    }
-    next();
-};
-
-// Aplicar middleware de autenticación a todas las rutas
+// 2. APLICAR MIDDLEWARE DE AUTENTICACIÓN A TODAS LAS RUTAS DE ADMIN
+// Esto asegura que solo los usuarios logueados pueden acceder a cualquiera de estas rutas.
 router.use(protect);
 
-// ========== RUTAS DE DASHBOARD ==========
-router.get('/dashboard/stats', verifyAdmin, getDashboardStats);
-router.get('/logs', verifyAdmin, getAdminLogs);
+// =========================================================
+// ========== RUTAS DE DASHBOARD Y LOGS (Admin/Mod) ==========
+// =========================================================
+router.get('/dashboard/stats', adminAndModerator, getDashboardStats);
+router.get('/logs', adminAndModerator, getAdminLogs);
 
-// ========== RUTAS DE REPORTES ==========
-router.get('/reports', verifyAdmin, getReports);
-router.put('/reports/:id/approve', verifyAdmin, approveReport);
-router.put('/reports/:id/reject', verifyAdmin, rejectReport);
-router.delete('/reports/:id', verifyAdmin, deleteReport);
+// =========================================================
+// ========== RUTAS DE REPORTES (Admin/Mod) ==========
+// =========================================================
+// Moderadores pueden ver y aprobar/rechazar
+router.get('/reports', adminAndModerator, getReports);
+router.put('/reports/:id/approve', adminAndModerator, approveReport);
+router.put('/reports/:id/reject', adminAndModerator, rejectReport);
 
-// ========== RUTAS DE USUARIOS ==========
-// Solo administradores pueden banear/desbanear usuarios
-router.put('/users/:id/ban', verifyAdminOnly, banUser);
-router.put('/users/:id/unban', verifyAdminOnly, unbanUser);
-router.delete('/users/:id', verifyAdminOnly, deleteUser);
-router.put('/users/:id/role', verifyAdminOnly, updateUserRole);
+// Solo el administrador debe poder eliminar el registro del reporte
+router.delete('/reports/:id', adminOnly, deleteReport); 
 
+// =========================================================
+// ========== RUTAS DE USUARIOS (Solo Admin) ==========
+// =========================================================
+// Estas acciones son críticas y se limitan solo a Administradores.
+router.put('/users/:id/ban', adminOnly, banUser);
+router.put('/users/:id/unban', adminOnly, unbanUser);
+router.delete('/users/:id', adminOnly, deleteUser);
+router.put('/users/:id/role', adminOnly, updateUserRole);
+
+// =========================================================
 // ========== RUTAS DE CATÁLOGO (JUEGOS) ==========
-router.get('/games', verifyAdmin, getGames);
-router.post('/games', verifyAdminOnly, createGame);
-router.put('/games/:id', verifyAdminOnly, updateGame);
-router.delete('/games/:id', verifyAdminOnly, deleteGame);
+// =========================================================
+// Moderadores pueden ver el catálogo
+router.get('/games', adminAndModerator, getGames);
+// Solo el administrador debe poder crear, modificar o eliminar juegos
+router.post('/games', adminOnly, createGame);
+router.put('/games/:id', adminOnly, updateGame);
+router.delete('/games/:id', adminOnly, deleteGame);
 
 module.exports = router;

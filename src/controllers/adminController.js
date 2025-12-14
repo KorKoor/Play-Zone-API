@@ -334,8 +334,10 @@ const banUser = async (req, res) => {
     try {
         const { id } = req.params;
         const { reason, duration } = req.body;
+        
+        const adminIdString = req.user.id.toString(); 
 
-        if (id === req.user.id) {
+        if (id === adminIdString) { // <-- USAR EL ID CONVERTIDO
             return res.status(400).json({
                 success: false,
                 message: 'No puedes banearte a ti mismo'
@@ -383,7 +385,7 @@ const banUser = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error al banear usuario:', error);
+        console.error('No se pueden banear administradores o moderadores (prohibido para tu nivel de seguridad', error);
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor',
