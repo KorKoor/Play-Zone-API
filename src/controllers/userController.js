@@ -93,9 +93,6 @@ exports.getUserProfile = async (req, res) => {
 // 2. EDITAR PERFIL (Requisito 1.3)
 // ==========================================================
 exports.updateProfile = async (req, res) => {
-    if (req.params.userId !== req.user.userId) {
-        return res.status(403).json({ message: "No tienes permiso para editar este perfil." });
-    }
     const { description, avatarUrl, consoles, genres } = req.body;
     const updateFields = { description, avatarUrl, consoles, genres };
 
